@@ -460,10 +460,13 @@ def main():
     # Plain text → ask
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    # Start reminder scheduler
-    start_scheduler(app.bot)
+    # Start reminder scheduler inside async context via post_init
+    async def post_init(application):
+        start_scheduler(application.bot)
+        logger.info("🤖 BillyBot Telegram bot starting...")
 
-    logger.info("🤖 BillyBot Telegram bot starting...")
+    app.post_init = post_init
+
     app.run_polling(drop_pending_updates=True)
 
 
