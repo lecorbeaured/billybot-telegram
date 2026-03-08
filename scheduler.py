@@ -1,13 +1,10 @@
 """
-BillyBot Reminder Scheduler
-Runs daily at 8 AM ET.
+BillyBot Reminder Scheduler - APScheduler 4.x compatible
 """
-import asyncio
 import logging
 from datetime import datetime
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler import AsyncScheduler
 from apscheduler.triggers.cron import CronTrigger
-import pytz
 import api as billybot_api
 
 logger = logging.getLogger(__name__)
@@ -57,13 +54,9 @@ async def run_reminders(bot):
         for b in due_bills:
             days = days_until_due(b["due_day"])
             emoji = CAT_EMOJI.get(b.get("category", "Other"), "📌")
-            amt = f"${float(b['amount']):.2f}"
-            due_str = "due TODAY" if days == 0 else f"in {days} day(s)"
-            lines.append(f"{emoji} {b['name']} — {amt} ({due_str})")
-
+            lines.append(f"{emoji} {b['name']} — ${float(b['amount']):.2f} ({'due TODAY' if days == 0 else f'in {days} day(s)'})")
         total = sum(float(b["amount"]) for b in due_bills)
-        lines.append(f"\nTotal due soon: ${total:.2f}")
-        lines.append("Use /paid <name> to mark as paid.")
+        lines.append(f"\nTotal: ${total:.2f}\nUse /paid <n> to mark as paid.")
 
         try:
             await bot.send_message(chat_id=int(chat_id), text="\n".join(lines))
@@ -74,16 +67,15 @@ async def run_reminders(bot):
     logger.info(f"[Scheduler] Done. Sent {sent} reminders.")
 
 
-def start_scheduler(bot):
-    scheduler = AsyncIOScheduler(timezone=pytz.timezone("America/New_York"))
-    scheduler.add_job(
+async def start_scheduler(bot):
+    """Start APScheduler 4.x async scheduler."""
+    scheduler = AsyncScheduler()
+    await scheduler.add_schedule(
         run_reminders,
-        trigger=CronTrigger(hour=8, minute=0),
+        CronTrigger(hour=8, minute=0, timezone="America/New_York"),
         args=[bot],
         id="daily_reminders",
-        replace_existing=True,
-        misfire_grace_time=3600,
     )
-    scheduler.start()
+    await scheduler.start_in_background()
     logger.info("[Scheduler] Daily reminders scheduled at 8:00 AM ET")
     return scheduler

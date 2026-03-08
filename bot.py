@@ -293,7 +293,7 @@ async def run_bot():
 
     async with app:
         from scheduler import start_scheduler
-        start_scheduler(app.bot)
+        await start_scheduler(app.bot)
         await app.start()
         await app.updater.start_polling(drop_pending_updates=True)
         logger.info("✅ Bot is running and polling for updates")
